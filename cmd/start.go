@@ -16,15 +16,16 @@ import (
 )
 
 var (
-	description    string
-	tags           []string
-	duration       time.Duration
-	wait           bool
-	noWait         bool
-	ago            time.Duration
-	jsonOutput     bool
-	silentMode     bool
-	continuousMode bool
+	description      string
+	tags             []string
+	duration         time.Duration
+	wait             bool
+	noWait           bool
+	ago              time.Duration
+	jsonOutput       bool
+	silentMode       bool
+	continuousMode   bool
+	noContinuousMode bool
 )
 
 var startCmd = &cobra.Command{
@@ -107,7 +108,8 @@ Example:
 		}
 
 		// Continuous mode: prompt for next action
-		if continuousMode {
+		// Enable continuous mode by default when not in JSON mode, not no-wait, and not explicitly disabled
+		if continuousMode || (!jsonOutput && !noWait && !noContinuousMode) {
 			handleContinuousMode()
 		}
 	},
@@ -122,40 +124,62 @@ func init() {
 	startCmd.Flags().DurationVar(&ago, "ago", 0, "Start the Pomodoro as if it began some time ago (e.g., 5m)")
 	startCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format (for non-TTY usage)")
 	startCmd.Flags().BoolVar(&silentMode, "silent", false, "Disable audio notifications for this session")
-	startCmd.Flags().BoolVar(&continuousMode, "continuous", false, "Stay in program after session completion for next action")
+	startCmd.Flags().BoolVar(&continuousMode, "continuous", false, "Force continuous mode (default: auto-detect based on environment)")
+	startCmd.Flags().BoolVar(&noContinuousMode, "no-continuous", false, "Disable continuous mode and exit after session")
 }
 
 // handleContinuousMode prompts user for next action after session completion
 func handleContinuousMode() {
-	fmt.Println("\n🍅 Session completed! What would you like to do next?")
-	fmt.Println("1. Start a break (b)")
-	fmt.Println("2. Start another pomodoro (p)")
-	fmt.Println("3. View status (s)")
-	fmt.Println("4. Quit (q)")
-	fmt.Print("\nChoose an option: ")
-
-	var choice string
-	fmt.Scanln(&choice)
-
-	switch strings.ToLower(choice) {
-	case "1", "b", "break":
-		fmt.Println("Starting break...")
-		// Use the break command implementation
-		runBreakSession(5*time.Minute, false)
-	case "2", "p", "pomodoro":
-		fmt.Println("Starting another pomodoro...")
-		// Restart with same settings
-		runPomodoroSession()
-	case "3", "s", "status":
-		fmt.Println("Checking status...")
-		// Could show today's stats or goals
-		showQuickStatus()
-	case "4", "q", "quit":
-		fmt.Println("Goodbye! 👋")
+	// Check if we're in an interactive environment
+	if !isInteractive() {
+		fmt.Println("🍅 Session completed!")
 		return
-	default:
-		fmt.Println("Invalid option. Goodbye! 👋")
 	}
+
+	for {
+		fmt.Println("\n🍅 Session completed! What would you like to do next?")
+		fmt.Println("1. Start a break (b)")
+		fmt.Println("2. Start another pomodoro (p)")
+		fmt.Println("3. View status (s)")
+		fmt.Println("4. Quit (q)")
+		fmt.Print("\nChoose an option: ")
+
+		var choice string
+		if _, err := fmt.Scanln(&choice); err != nil {
+			fmt.Println("Error reading input. Goodbye! 👋")
+			return
+		}
+
+		switch strings.ToLower(strings.TrimSpace(choice)) {
+		case "1", "b", "break":
+			fmt.Println("Starting break...")
+			runBreakSession(5*time.Minute, true) // Always wait for breaks in continuous mode
+			continue // Continue the loop after break
+		case "2", "p", "pomodoro":
+			fmt.Println("Starting another pomodoro...")
+			runPomodoroSession()
+			continue // Continue the loop after pomodoro
+		case "3", "s", "status":
+			showQuickStatus()
+			// Continue to show menu again
+		case "4", "q", "quit", "":
+			fmt.Println("Goodbye! 👋")
+			return
+		default:
+			fmt.Printf("Invalid option '%s'. Please try again.\n", choice)
+			continue // Show menu again
+		}
+	}
+}
+
+// isInteractive checks if we're running in an interactive terminal
+func isInteractive() bool {
+	// Simple check - in a real terminal, we can read from stdin
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
 // runBreakSession runs a break session with specified duration
@@ -261,5 +285,7 @@ func showQuickStatus() {
 	fmt.Printf("🍅 Pomodoros: %d\n", pomodoroCount)
 	fmt.Printf("☕ Breaks: %d\n", breakCount)
 	fmt.Printf("📈 Total sessions: %d\n", len(sessions))
-	fmt.Println()
+	
+	// Add a pause to let user read the status
+	time.Sleep(1 * time.Second)
 }
