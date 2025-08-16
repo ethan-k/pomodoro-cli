@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/ethan-k/pomodoro-cli/internal/utils"
 )
 
 const (
@@ -123,7 +124,7 @@ func (m PomodoroModel) View() string {
 	}
 
 	remaining := m.EndTime.Sub(now).Round(time.Second)
-	remainingStr := formatDuration(remaining)
+	remainingStr := utils.FormatDuration(remaining)
 
 	emoji := "🍅"
 	if m.IsBreak {
@@ -139,13 +140,6 @@ func (m PomodoroModel) View() string {
 		remainingStr,
 		emoji,
 		m.Description)
-}
-
-// formatDuration formats a duration in MM:SS format
-func formatDuration(d time.Duration) string {
-	minutes := int(d.Minutes())
-	seconds := int(d.Seconds()) % 60
-	return fmt.Sprintf("%02d:%02d", minutes, seconds)
 }
 
 // tickEvery returns a command that ticks at the specified interval

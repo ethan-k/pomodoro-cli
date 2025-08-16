@@ -10,25 +10,40 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// PomodoroSession represents a Pomodoro session in the database
-type PomodoroSession struct {
-	ID          int64
-	StartTime   time.Time
-	EndTime     time.Time
-	Description string
-	DurationSec int64
-	Tags        []string
-	TagsCSV     string
-	WasBreak    bool
-}
+var _ DB = (*InternalDB)(nil)
 
-// DB handles database operations
-type DB struct {
+type InternalDB struct {
 	db *sql.DB
 }
 
-// NewDB creates a new database connection
-func NewDB() (*DB, error) {
+type DB interface {
+	CreateSession(startTime, endTime time.Time, description string, durationSec int64, tagsCSV string, wasBreak bool) (int64, error)
+	GetActiveSession() (*PomodoroSession, error)
+	GetPausedSession() (*PomodoroSession, error)
+	GetLastSession() (*PomodoroSession, error)
+	UpdateSessionEndTime(id int64, endTime time.Time) error
+	PauseSession(id int64, pausedAt time.Time) error
+	ResumeSession(id int64, newEndTime time.Time) error
+	GetSessionsByDateRange(startDate, endDate time.Time) ([]PomodoroSession, error)
+	GetTodaySessions() ([]PomodoroSession, error)
+	Close() error
+}
+
+type PomodoroSession struct {
+	ID                  int64
+	StartTime           time.Time
+	EndTime             time.Time
+	Description         string
+	DurationSec         int64
+	Tags                []string
+	TagsCSV             string
+	WasBreak            bool
+	PausedAt            *time.Time
+	TotalPausedDuration int64
+	IsPaused            bool
+}
+
+func NewDB() (*InternalDB, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("error getting home dir: %v", err)
@@ -44,7 +59,7 @@ func NewDB() (*DB, error) {
 		return nil, fmt.Errorf("error opening DB: %v", err)
 	}
 
-	// Create tables if they don't exist
+	// Create base table
 	ddl := `CREATE TABLE IF NOT EXISTS pomodoros (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		start_time TIMESTAMP NOT NULL,
@@ -58,19 +73,30 @@ func NewDB() (*DB, error) {
 
 	if _, err := db.Exec(ddl); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("error creating table: %v", err)
+		return nil, fmt.Errorf("error creating base table: %v", err)
 	}
 
-	return &DB{db: db}, nil
+	// Add new columns if they don't exist (for database migration)
+	migrations := []string{
+		`ALTER TABLE pomodoros ADD COLUMN paused_at TIMESTAMP;`,
+		`ALTER TABLE pomodoros ADD COLUMN total_paused_duration INTEGER DEFAULT 0;`,
+		`ALTER TABLE pomodoros ADD COLUMN is_paused BOOLEAN DEFAULT 0;`,
+		`CREATE INDEX IF NOT EXISTS idx_pomodoros_active ON pomodoros(is_paused, end_time);`,
+	}
+
+	for _, migration := range migrations {
+		// Ignore errors for columns that already exist
+		db.Exec(migration)
+	}
+
+	return &InternalDB{db: db}, nil
 }
 
-// Close closes the database connection
-func (d *DB) Close() error {
+func (d *InternalDB) Close() error {
 	return d.db.Close()
 }
 
-// CreateSession creates a new Pomodoro session
-func (d *DB) CreateSession(startTime, endTime time.Time, description string, durationSec int64, tagsCSV string, wasBreak bool) (int64, error) {
+func (d *InternalDB) CreateSession(startTime, endTime time.Time, description string, durationSec int64, tagsCSV string, wasBreak bool) (int64, error) {
 	res, err := d.db.Exec(
 		`INSERT INTO pomodoros(start_time, end_time, description, duration_secs, tags_csv, was_break) VALUES(?, ?, ?, ?, ?, ?)`,
 		startTime, endTime, description, durationSec, tagsCSV, wasBreak,
@@ -82,15 +108,15 @@ func (d *DB) CreateSession(startTime, endTime time.Time, description string, dur
 	return res.LastInsertId()
 }
 
-// GetActiveSession returns the most recent active session if any
-func (d *DB) GetActiveSession() (*PomodoroSession, error) {
+func (d *InternalDB) GetActiveSession() (*PomodoroSession, error) {
 	now := time.Now()
 
 	var session PomodoroSession
 	err := d.db.QueryRow(
-		`SELECT id, start_time, end_time, description, duration_secs, tags_csv, was_break 
+		`SELECT id, start_time, end_time, description, duration_secs, tags_csv, was_break, 
+		        paused_at, total_paused_duration, is_paused 
 		FROM pomodoros 
-		WHERE end_time > ? 
+		WHERE (end_time > ? AND is_paused = 0) OR is_paused = 1
 		ORDER BY start_time DESC LIMIT 1`,
 		now,
 	).Scan(
@@ -101,6 +127,9 @@ func (d *DB) GetActiveSession() (*PomodoroSession, error) {
 		&session.DurationSec,
 		&session.TagsCSV,
 		&session.WasBreak,
+		&session.PausedAt,
+		&session.TotalPausedDuration,
+		&session.IsPaused,
 	)
 
 	if err == sql.ErrNoRows {
@@ -113,11 +142,42 @@ func (d *DB) GetActiveSession() (*PomodoroSession, error) {
 	return &session, nil
 }
 
-// GetLastSession returns the most recent completed session
-func (d *DB) GetLastSession() (*PomodoroSession, error) {
+func (d *InternalDB) GetPausedSession() (*PomodoroSession, error) {
 	var session PomodoroSession
 	err := d.db.QueryRow(
-		`SELECT id, start_time, end_time, description, duration_secs, tags_csv, was_break 
+		`SELECT id, start_time, end_time, description, duration_secs, tags_csv, was_break, 
+		        paused_at, total_paused_duration, is_paused 
+		FROM pomodoros 
+		WHERE is_paused = 1
+		ORDER BY start_time DESC LIMIT 1`,
+	).Scan(
+		&session.ID,
+		&session.StartTime,
+		&session.EndTime,
+		&session.Description,
+		&session.DurationSec,
+		&session.TagsCSV,
+		&session.WasBreak,
+		&session.PausedAt,
+		&session.TotalPausedDuration,
+		&session.IsPaused,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error querying paused session: %v", err)
+	}
+
+	return &session, nil
+}
+
+func (d *InternalDB) GetLastSession() (*PomodoroSession, error) {
+	var session PomodoroSession
+	err := d.db.QueryRow(
+		`SELECT id, start_time, end_time, description, duration_secs, tags_csv, was_break,
+		        paused_at, total_paused_duration, is_paused
 		FROM pomodoros 
 		ORDER BY start_time DESC LIMIT 1`,
 	).Scan(
@@ -128,6 +188,9 @@ func (d *DB) GetLastSession() (*PomodoroSession, error) {
 		&session.DurationSec,
 		&session.TagsCSV,
 		&session.WasBreak,
+		&session.PausedAt,
+		&session.TotalPausedDuration,
+		&session.IsPaused,
 	)
 
 	if err == sql.ErrNoRows {
@@ -140,8 +203,7 @@ func (d *DB) GetLastSession() (*PomodoroSession, error) {
 	return &session, nil
 }
 
-// UpdateSessionEndTime updates the end time of a session
-func (d *DB) UpdateSessionEndTime(id int64, endTime time.Time) error {
+func (d *InternalDB) UpdateSessionEndTime(id int64, endTime time.Time) error {
 	_, err := d.db.Exec(
 		`UPDATE pomodoros SET end_time = ? WHERE id = ?`,
 		endTime, id,
@@ -149,10 +211,50 @@ func (d *DB) UpdateSessionEndTime(id int64, endTime time.Time) error {
 	return err
 }
 
-// GetSessionsByDateRange returns sessions within a date range
-func (d *DB) GetSessionsByDateRange(startDate, endDate time.Time) ([]PomodoroSession, error) {
+func (d *InternalDB) PauseSession(id int64, pausedAt time.Time) error {
+	_, err := d.db.Exec(
+		`UPDATE pomodoros SET paused_at = ?, is_paused = 1 WHERE id = ?`,
+		pausedAt, id,
+	)
+	return err
+}
+
+func (d *InternalDB) ResumeSession(id int64, newEndTime time.Time) error {
+	// First, get the current paused duration
+	var currentPausedAt time.Time
+	var totalPausedDuration int64
+
+	err := d.db.QueryRow(
+		`SELECT paused_at, total_paused_duration FROM pomodoros WHERE id = ?`,
+		id,
+	).Scan(&currentPausedAt, &totalPausedDuration)
+
+	if err != nil {
+		return fmt.Errorf("error getting paused session data: %v", err)
+	}
+
+	// Calculate additional paused time
+	now := time.Now()
+	additionalPausedTime := now.Sub(currentPausedAt)
+	newTotalPausedDuration := totalPausedDuration + int64(additionalPausedTime.Seconds())
+
+	// Update the session
+	_, err = d.db.Exec(
+		`UPDATE pomodoros SET 
+			end_time = ?, 
+			paused_at = NULL, 
+			total_paused_duration = ?, 
+			is_paused = 0 
+		WHERE id = ?`,
+		newEndTime, newTotalPausedDuration, id,
+	)
+	return err
+}
+
+func (d *InternalDB) GetSessionsByDateRange(startDate, endDate time.Time) ([]PomodoroSession, error) {
 	rows, err := d.db.Query(
-		`SELECT id, start_time, end_time, description, duration_secs, tags_csv, was_break 
+		`SELECT id, start_time, end_time, description, duration_secs, tags_csv, was_break,
+		        paused_at, total_paused_duration, is_paused
 		FROM pomodoros 
 		WHERE date(start_time) >= date(?) AND date(start_time) <= date(?)
 		ORDER BY start_time DESC`,
@@ -174,6 +276,9 @@ func (d *DB) GetSessionsByDateRange(startDate, endDate time.Time) ([]PomodoroSes
 			&session.DurationSec,
 			&session.TagsCSV,
 			&session.WasBreak,
+			&session.PausedAt,
+			&session.TotalPausedDuration,
+			&session.IsPaused,
 		); err != nil {
 			return nil, fmt.Errorf("error scanning session: %v", err)
 		}
@@ -183,8 +288,7 @@ func (d *DB) GetSessionsByDateRange(startDate, endDate time.Time) ([]PomodoroSes
 	return sessions, nil
 }
 
-// GetTodaySessions returns all sessions for today
-func (d *DB) GetTodaySessions() ([]PomodoroSession, error) {
+func (d *InternalDB) GetTodaySessions() ([]PomodoroSession, error) {
 	today := time.Now().Truncate(24 * time.Hour)
 	tomorrow := today.Add(24 * time.Hour)
 	return d.GetSessionsByDateRange(today, tomorrow)

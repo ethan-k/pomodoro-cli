@@ -11,12 +11,14 @@ import (
 	"github.com/ethan-k/pomodoro-cli/internal/db"
 	"github.com/ethan-k/pomodoro-cli/internal/model"
 	"github.com/ethan-k/pomodoro-cli/internal/notify"
+	"github.com/ethan-k/pomodoro-cli/internal/utils"
 )
 
 var (
 	breakDuration time.Duration
 	breakWait     bool
 	breakJson     bool
+	breakSilent   bool
 )
 
 // breakCmd represents the break command
@@ -42,10 +44,15 @@ Example:
 			}
 		}
 
+		// Validate duration
+		if err := utils.ValidateDuration(breakDuration); err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid break duration: %v\n", err)
+			os.Exit(1)
+		}
+
 		startTime := time.Now()
 		endTime := startTime.Add(breakDuration)
 
-		// Connect to database
 		database, err := db.NewDB()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -90,7 +97,7 @@ Example:
 		}
 
 		// Send notification when complete
-		if err := notify.NotifyBreakComplete(); err != nil {
+		if err := notify.NotifyBreakCompleteWithOptions(breakSilent); err != nil {
 			fmt.Fprintf(os.Stderr, "Error sending notification: %v\n", err)
 		}
 	},
@@ -103,4 +110,5 @@ func init() {
 	breakCmd.Flags().DurationVarP(&breakDuration, "duration", "d", 5*time.Minute, "Duration of the break (e.g., 5m, 10m)")
 	breakCmd.Flags().BoolVarP(&breakWait, "wait", "w", false, "Wait for the break to complete before exiting")
 	breakCmd.Flags().BoolVar(&breakJson, "json", false, "Output in JSON format (for non-TTY usage)")
+	breakCmd.Flags().BoolVar(&breakSilent, "silent", false, "Disable audio notifications for this break")
 }

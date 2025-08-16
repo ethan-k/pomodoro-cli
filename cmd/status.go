@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethan-k/pomodoro-cli/internal/db"
 	"github.com/ethan-k/pomodoro-cli/internal/model"
+	"github.com/ethan-k/pomodoro-cli/internal/utils"
 )
 
 var (
@@ -55,6 +56,28 @@ Example:
 				fmt.Println(`{"active":false}`)
 			} else {
 				fmt.Println("No active Pomodoro session.")
+			}
+			return
+		}
+
+		// Handle paused sessions
+		if session.IsPaused {
+			if jsonOutput {
+				pausedDuration := time.Since(*session.PausedAt).Round(time.Second)
+				fmt.Printf(`{"active":true,"status":"paused","id":%d,"description":"%s","paused_at":"%s","paused_for":"%s","is_break":%t}`+"\n",
+					session.ID,
+					session.Description,
+					session.PausedAt.Format(time.RFC3339),
+					pausedDuration,
+					session.WasBreak)
+			} else {
+				pausedDuration := time.Since(*session.PausedAt).Round(time.Second)
+				emoji := "🍅"
+				if session.WasBreak {
+					emoji = "☕"
+				}
+				fmt.Printf("⏸️  %s %s (paused for %s)\n", emoji, session.Description, pausedDuration)
+				fmt.Println("Use 'pomodoro resume' to continue.")
 			}
 			return
 		}
@@ -111,7 +134,7 @@ Example:
 
 		output := statusFormat
 		output = strings.ReplaceAll(output, "%d", session.Description)
-		output = strings.ReplaceAll(output, "%r", formatDuration(remaining))
+		output = strings.ReplaceAll(output, "%r", utils.FormatDuration(remaining))
 		output = strings.ReplaceAll(output, "%p", fmt.Sprintf("%.1f%%", progress))
 		output = strings.ReplaceAll(output, "%t", session.TagsCSV)
 		output = strings.ReplaceAll(output, "%e", session.EndTime.Format("15:04:05"))
@@ -127,11 +150,4 @@ func init() {
 	statusCmd.Flags().StringVarP(&statusFormat, "format", "f", "%r remaining for %d", "Format string for status output")
 	statusCmd.Flags().BoolVarP(&statusWait, "wait", "w", false, "Wait and show live progress")
 	statusCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format (for non-TTY usage)")
-}
-
-// formatDuration formats a duration in MM:SS format
-func formatDuration(d time.Duration) string {
-	minutes := int(d.Minutes())
-	seconds := int(d.Seconds()) % 60
-	return fmt.Sprintf("%02d:%02d", minutes, seconds)
 }

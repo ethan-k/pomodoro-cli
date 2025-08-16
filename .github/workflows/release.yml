@@ -1,0 +1,156 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Run tests
+        run: make test
+
+      - name: Run linting
+        run: |
+          go install golang.org/x/lint/golint@latest
+          make lint || echo "Linting completed with warnings"
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: linux-amd64
+          - goos: linux
+            goarch: arm64
+            suffix: linux-arm64
+          - goos: darwin
+            goarch: amd64
+            suffix: darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            suffix: darwin-arm64
+          - goos: windows
+            goarch: amd64
+            suffix: windows-amd64.exe
+          - goos: windows
+            goarch: arm64
+            suffix: windows-arm64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          
+          BINARY_NAME="pomodoro-${{ matrix.suffix }}"
+          
+          go build \
+            -ldflags="-X main.version=${VERSION} -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ) -s -w" \
+            -o "${BINARY_NAME}" \
+            .
+          
+          # Create checksum
+          if command -v sha256sum >/dev/null; then
+            sha256sum "${BINARY_NAME}" > "${BINARY_NAME}.sha256"
+          else
+            shasum -a 256 "${BINARY_NAME}" > "${BINARY_NAME}.sha256"
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: pomodoro-${{ matrix.suffix }}
+          path: |
+            pomodoro-${{ matrix.suffix }}*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find . -name "pomodoro-*" -type f | while read file; do
+            cp "$file" release-assets/
+          done
+          ls -la release-assets/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          body: |
+            ## 🍅 Pomodoro CLI Release
+            
+            This release includes binaries for multiple platforms:
+            - **Linux**: amd64, arm64
+            - **macOS**: amd64 (Intel), arm64 (Apple Silicon)
+            - **Windows**: amd64, arm64
+            
+            ### Installation
+            
+            1. Download the appropriate binary for your platform
+            2. Make it executable (Unix/Linux/macOS): `chmod +x pomodoro-*`
+            3. Move to a directory in your PATH: `mv pomodoro-* /usr/local/bin/pomodoro`
+            
+            ### Quick Start
+            ```bash
+            # Start a 25-minute pomodoro
+            pomodoro start "Focus work"
+            
+            # Take a 5-minute break
+            pomodoro break 5m --wait
+            
+            # Check status
+            pomodoro status
+            ```
+            
+            ### Checksums
+            SHA256 checksums are provided for each binary to verify integrity.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

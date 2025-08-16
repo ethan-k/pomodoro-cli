@@ -28,13 +28,13 @@ func ConvertToOPF(session *db.PomodoroSession) OPFPomodoro {
 	if session.WasBreak {
 		pomType = "break"
 	}
-	
+
 	// Convert tags CSV to slice
 	var tags []string
 	if session.TagsCSV != "" {
 		tags = splitTags(session.TagsCSV)
 	}
-	
+
 	return OPFPomodoro{
 		ID:          formatID(session.ID),
 		StartedAt:   formatTime(session.StartTime),
@@ -48,11 +48,11 @@ func ConvertToOPF(session *db.PomodoroSession) OPFPomodoro {
 // ConvertSessionsToOPF converts multiple PomodoroSessions to OPF format
 func ConvertSessionsToOPF(sessions []db.PomodoroSession) OPFExport {
 	opfPomodoros := make([]OPFPomodoro, 0, len(sessions))
-	
+
 	for _, session := range sessions {
 		opfPomodoros = append(opfPomodoros, ConvertToOPF(&session))
 	}
-	
+
 	return OPFExport{
 		Pomodoros: opfPomodoros,
 	}
@@ -77,14 +77,14 @@ func splitTags(tagsCSV string) []string {
 	if tagsCSV == "" {
 		return nil
 	}
-	
+
 	// Use strings.Split to convert CSV to slice
 	// This is a simple implementation; in a real app, you might want to handle
 	// escaping commas in tag values, trimming whitespace, etc.
 	tags := make([]string, 0)
 	start := 0
 	inQuote := false
-	
+
 	for i := 0; i < len(tagsCSV); i++ {
 		if tagsCSV[i] == '"' {
 			inQuote = !inQuote
@@ -93,11 +93,11 @@ func splitTags(tagsCSV string) []string {
 			start = i + 1
 		}
 	}
-	
+
 	// Add the last tag
 	if start < len(tagsCSV) {
 		tags = append(tags, tagsCSV[start:])
 	}
-	
+
 	return tags
 }

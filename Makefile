@@ -3,8 +3,8 @@
 # Variables
 BINARY_NAME=pomodoro
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
-LDFLAGS=-ldflags "-X github.com/ethan-k/pomodoro-cli/cmd.Version=$(VERSION) -X github.com/ethan-k/pomodoro-cli/cmd.BuildTime=$(BUILD_TIME)"
+BUILD_DATE=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+LDFLAGS=-ldflags "-X main.version=$(VERSION) -X main.buildDate=$(BUILD_DATE) -s -w"
 
 # Go related variables
 GOBASE=$(shell pwd)

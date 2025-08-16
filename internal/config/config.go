@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ethan-k/pomodoro-cli/internal/audio"
 	"github.com/ethan-k/pomodoro-cli/internal/db"
 	"gopkg.in/yaml.v3"
 )
@@ -16,6 +17,7 @@ type Config struct {
 	Hooks     HooksConfig    `yaml:"hooks"`
 	Defaults  DefaultsConfig `yaml:"defaults"`
 	DataPaths DataPaths      `yaml:"paths"`
+	Audio     *audio.Config  `yaml:"audio"`
 }
 
 // GoalConfig represents the goals configuration
@@ -68,6 +70,7 @@ func DefaultConfig() *Config {
 			Database:  filepath.Join(home, ".local", "share", "pomodoro", "history.db"),
 			OPFExport: filepath.Join(home, ".local", "share", "pomodoro", "exports"),
 		},
+		Audio: audio.DefaultConfig(),
 	}
 }
 
@@ -95,6 +98,11 @@ func LoadConfig() (*Config, error) {
 	config := DefaultConfig() // Start with defaults
 	if err := yaml.Unmarshal(data, config); err != nil {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
+	}
+
+	// Ensure audio config exists (for backward compatibility)
+	if config.Audio == nil {
+		config.Audio = audio.DefaultConfig()
 	}
 
 	return config, nil
