@@ -60,6 +60,12 @@ sudo mv pomodoro /usr/local/bin/
 **Windows:**
 Download the appropriate `.exe` file from the releases page and add it to your PATH.
 
+#### Go Install (Latest Version)
+
+```bash
+go install github.com/ethan-k/pomodoro-cli@latest
+```
+
 #### Build from Source
 
 ```bash
@@ -156,7 +162,7 @@ defaults:
 # Audio settings
 audio:
   enabled: true
-  volume: 0.7                    # 0.0 to 1.0
+  volume: 0.5                    # 0.0 to 1.0 (default: quiet)
   custom_sounds_dir: "~/.config/pomodoro/sounds"
   sounds:
     pomodoro_complete: "pomodoro_complete.wav"
@@ -178,16 +184,16 @@ hooks:
 
 #### Built-in Sounds
 
-The Pomodoro CLI includes high-quality, copyright-free notification sounds:
+The Pomodoro CLI includes professional, public domain notification sounds:
 
-- **Pomodoro Complete**: Gentle bell chime with natural decay
-- **Break Complete**: Soft piano chord (C major) 
-- **Session Start**: Light two-tone notification
+- **Pomodoro Complete**: "Calm" - Gentle, soothing notification
+- **Break Complete**: "Polite" - Soft, pleasant tone
+- **Session Start**: "Glass" - Light, crisp chime
 
 All sounds are:
-- ✅ **Copyright-free** and safe for commercial use
-- 🎵 **Musically pleasant** - designed to be non-jarring
-- ⚡ **Optimized** for notification purposes (2-3 seconds)
+- ✅ **Public Domain** (CC0) - safe for any use, no attribution required
+- 🔔 **Professional quality** - hand-crafted notification tones
+- ⚡ **Brief & subtle** - designed for mobile/desktop notifications
 - 🔊 **Cross-platform** compatible (WAV format)
 
 #### Custom Sounds
