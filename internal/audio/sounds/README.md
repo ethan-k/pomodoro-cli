@@ -4,17 +4,20 @@ This directory contains default audio notifications for the Pomodoro CLI.
 
 ## Sound Files
 
-- `pomodoro_complete.wav` - Gentle bell chime for pomodoro completion
-- `break_complete.wav` - Soft piano chord for break completion  
-- `session_start.wav` - Light notification tone for session start
+- `pomodoro_complete.wav` - "Calm" - Gentle notification sound
+- `break_complete.wav` - "Polite" - Soft notification tone  
+- `session_start.wav` - "Glass" - Light notification chime
 
-## Copyright
+## Copyright & License
 
 All sound files in this directory are:
-- Created specifically for this project
-- Copyright-free and royalty-free
-- Safe for commercial and personal use
-- Based on simple synthesized tones
+- **Public Domain** - CC0 Creative Commons license
+- **Source**: [akx/Notifications](https://github.com/akx/Notifications) GitHub repository
+- **License**: Dual CC Attribution 3.0 or CC0 Public Domain
+- **Safe for commercial and personal use**
+- **No attribution required** (though appreciated)
+
+These are "hand-crafted, subtle notification tones for mobile devices" created by akx.
 
 ## Custom Sounds
 
@@ -25,10 +28,10 @@ You can replace these with your own sounds by:
 
 Supported formats: WAV, MP3, OGG (depending on system audio libraries)
 
-## Sound Sources
+## Sound Characteristics
 
-These sounds were created using:
-- Simple sine wave generators
-- Basic chord progressions in major keys
-- Gentle attack/decay envelopes for pleasant listening
-- Optimized for notification purposes (2-3 seconds duration)
+These notification sounds are:
+- **Subtle and pleasant** - designed for mobile/desktop notifications
+- **Professional quality** - hand-crafted audio files
+- **Appropriate duration** - brief and non-intrusive
+- **Well-tested** - used in production mobile applications
