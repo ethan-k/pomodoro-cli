@@ -159,9 +159,9 @@ audio:
   volume: 0.7                    # 0.0 to 1.0
   custom_sounds_dir: "~/.config/pomodoro/sounds"
   sounds:
-    pomodoro_complete: "pomodoro.wav"
-    break_complete: "break.wav"
-    session_start: "notification.wav"
+    pomodoro_complete: "pomodoro_complete.wav"
+    break_complete: "break_complete.wav"
+    session_start: "session_start.wav"
 
 # Data storage paths
 paths:
@@ -176,18 +176,33 @@ hooks:
 
 ### Audio Configuration
 
+#### Built-in Sounds
+
+The Pomodoro CLI includes high-quality, copyright-free notification sounds:
+
+- **Pomodoro Complete**: Gentle bell chime with natural decay
+- **Break Complete**: Soft piano chord (C major) 
+- **Session Start**: Light two-tone notification
+
+All sounds are:
+- ✅ **Copyright-free** and safe for commercial use
+- 🎵 **Musically pleasant** - designed to be non-jarring
+- ⚡ **Optimized** for notification purposes (2-3 seconds)
+- 🔊 **Cross-platform** compatible (WAV format)
+
 #### Custom Sounds
-Place custom sound files in `~/.config/pomodoro/sounds/` and reference them in the config:
+Replace with your own sounds by placing files in `~/.config/pomodoro/sounds/`:
 
 ```yaml
 audio:
   sounds:
-    pomodoro_complete: "my-custom-sound.wav"
+    pomodoro_complete: "my-custom-bell.wav"
+    break_complete: "my-custom-chime.mp3"
 ```
 
 #### Volume Control
 ```bash
-# Set volume in config file or programmatically
+# Set volume in config file
 pomodoro config audio --volume 0.8
 ```
 

@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/gen2brain/beeep"
 )
@@ -42,16 +44,26 @@ func (p *SystemPlayer) resolveSoundPaths() error {
 			continue
 		}
 
-		// Try built-in sounds directory
-		builtinPath := filepath.Join("internal", "audio", "sounds", filename)
-		if _, err := os.Stat(builtinPath); err == nil {
-			p.soundPaths[soundType] = builtinPath
-			continue
+		// Try to find built-in sounds directory (relative to executable or source)
+		possiblePaths := []string{
+			filepath.Join("internal", "audio", "sounds", filename),
+			filepath.Join("audio", "sounds", filename),
+			filepath.Join("sounds", filename),
 		}
 
-		// For now, we'll use system beep as fallback
-		// In a full implementation, you'd embed default sound files
-		p.soundPaths[soundType] = ""
+		found := false
+		for _, builtinPath := range possiblePaths {
+			if _, err := os.Stat(builtinPath); err == nil {
+				p.soundPaths[soundType] = builtinPath
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			// Use system beep as fallback
+			p.soundPaths[soundType] = ""
+		}
 	}
 
 	return nil
@@ -79,23 +91,58 @@ func (p *SystemPlayer) Play(soundType SoundType) error {
 
 // playFile attempts to play an audio file
 func (p *SystemPlayer) playFile(path string) error {
-	// For now, we'll use a simple approach
-	// In a full implementation, you'd use a proper audio library like:
-	// - github.com/hajimehoshi/oto for cross-platform audio
-	// - github.com/faiface/beep for audio file format support
-
 	// Check if file exists
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return fmt.Errorf("sound file not found: %s", path)
 	}
 
-	// For macOS, we can use afplay
-	// For Linux, we could use aplay, paplay, or similar
-	// For Windows, we could use a system call
+	// Try platform-specific audio players
+	// For macOS, use afplay
+	if err := p.tryMacOSPlayer(path); err == nil {
+		return nil
+	}
 
-	// This is a simplified implementation - in production you'd want
-	// proper cross-platform audio support
+	// For Linux, try common audio players
+	if err := p.tryLinuxPlayer(path); err == nil {
+		return nil
+	}
+
+	// Fallback to system beep if no audio player works
 	return p.playSystemBeep()
+}
+
+// tryMacOSPlayer attempts to play audio using macOS afplay
+func (p *SystemPlayer) tryMacOSPlayer(path string) error {
+	if runtime.GOOS != "darwin" {
+		return fmt.Errorf("not on macOS")
+	}
+	
+	cmd := exec.Command("afplay", path)
+	return cmd.Run()
+}
+
+// tryLinuxPlayer attempts to play audio using common Linux audio players
+func (p *SystemPlayer) tryLinuxPlayer(path string) error {
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("not on Linux")
+	}
+	
+	// Try different Linux audio players in order of preference
+	players := []string{"paplay", "aplay", "play"}
+	
+	for _, player := range players {
+		// Check if player exists
+		if _, err := exec.LookPath(player); err != nil {
+			continue
+		}
+		
+		cmd := exec.Command(player, path)
+		if err := cmd.Run(); err == nil {
+			return nil
+		}
+	}
+	
+	return fmt.Errorf("no suitable audio player found")
 }
 
 // playSystemBeep plays a system beep sound

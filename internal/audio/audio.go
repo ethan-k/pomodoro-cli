@@ -42,9 +42,9 @@ func DefaultConfig() *Config {
 		Enabled: true,
 		Volume:  0.7,
 		Sounds: map[string]string{
-			string(PomodoroComplete): "pomodoro.wav",
-			string(BreakComplete):    "break.wav",
-			string(SessionStart):     "notification.wav",
+			string(PomodoroComplete): "pomodoro_complete.wav",
+			string(BreakComplete):    "break_complete.wav",
+			string(SessionStart):     "session_start.wav",
 		},
 		CustomSoundsDir: filepath.Join(home, ".config", "pomodoro", "sounds"),
 	}
