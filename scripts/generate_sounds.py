@@ -52,45 +52,51 @@ def save_wav(filename, audio_data, sample_rate=44100):
         wav_file.writeframes(audio_data.tobytes())
 
 def create_pomodoro_complete():
-    """Create a gentle bell-like sound for pomodoro completion."""
-    # Bell-like frequencies (based on C major chord with overtones)
-    fundamental = 523.25  # C5
-    overtones = [fundamental, fundamental * 2, fundamental * 3, fundamental * 5]
+    """Create a simple, quiet bell sound for pomodoro completion."""
+    # Simple bell tone - much quieter and simpler
+    fundamental = 800  # Higher pitch bell sound
     
-    # Create bell sound with decay
-    duration = 2.5
-    bell_sound = generate_chord([fundamental], duration, amplitude=0.4)
+    # Create a simple bell with natural decay
+    duration = 1.5  # Shorter duration
+    sample_rate = 44100
+    frames = int(duration * sample_rate)
     
-    # Add subtle overtones with quick decay
-    for i, freq in enumerate(overtones[1:], 1):
-        overtone_duration = duration / (i + 1)
-        overtone = generate_sine_wave(freq, overtone_duration, amplitude=0.1 / i)
-        # Pad with zeros to match main duration
-        if len(overtone) < len(bell_sound):
-            overtone = np.pad(overtone, (0, len(bell_sound) - len(overtone)))
-        bell_sound[:len(overtone)] += overtone[:len(bell_sound)]
+    bell_sound = []
+    for i in range(frames):
+        # Simple sine wave with exponential decay
+        t = i / sample_rate
+        decay = math.exp(-t * 2)  # Exponential decay
+        amplitude = 0.15 * decay  # Much quieter (was 0.4)
+        
+        # Simple sine wave
+        value = amplitude * math.sin(2 * math.pi * fundamental * t)
+        
+        # Gentle fade in for first 10ms to avoid click
+        fade_frames = int(0.01 * sample_rate)
+        if i < fade_frames:
+            value *= i / fade_frames
+            
+        bell_sound.append(value)
     
-    return bell_sound
+    return np.array(bell_sound)
 
 def create_break_complete():
-    """Create a soft piano-like chord for break completion."""
-    # C major chord (C-E-G) in a comfortable range
-    chord_frequencies = [261.63, 329.63, 392.00]  # C4, E4, G4
+    """Create a simple, soft tone for break completion."""
+    # Single soft tone instead of chord - much simpler
+    frequency = 523.25  # C5
     
-    # Create a soft chord with gentle attack
-    chord_sound = generate_chord(chord_frequencies, 2.0, amplitude=0.25)
+    # Create a simple tone with gentle envelope
+    duration = 1.0  # Shorter
+    tone_sound = generate_sine_wave(frequency, duration, amplitude=0.12)  # Much quieter
     
-    return chord_sound
+    return tone_sound
 
 def create_session_start():
-    """Create a light notification for session start."""
-    # Simple two-tone notification
-    tone1 = generate_sine_wave(440, 0.3, amplitude=0.3)  # A4
-    silence = np.zeros(int(0.1 * 44100))  # 100ms silence
-    tone2 = generate_sine_wave(523.25, 0.3, amplitude=0.3)  # C5
+    """Create a very quiet notification for session start."""
+    # Simple single soft tone
+    tone = generate_sine_wave(660, 0.5, amplitude=0.08)  # E5, very quiet
     
-    notification = np.concatenate([tone1, silence, tone2])
-    return notification
+    return tone
 
 def main():
     """Generate all sound files."""

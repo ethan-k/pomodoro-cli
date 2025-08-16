@@ -156,7 +156,7 @@ defaults:
 # Audio settings
 audio:
   enabled: true
-  volume: 0.7                    # 0.0 to 1.0
+  volume: 0.5                    # 0.0 to 1.0 (default: quiet)
   custom_sounds_dir: "~/.config/pomodoro/sounds"
   sounds:
     pomodoro_complete: "pomodoro_complete.wav"
@@ -178,16 +178,16 @@ hooks:
 
 #### Built-in Sounds
 
-The Pomodoro CLI includes high-quality, copyright-free notification sounds:
+The Pomodoro CLI includes quiet, copyright-free notification sounds:
 
-- **Pomodoro Complete**: Gentle bell chime with natural decay
-- **Break Complete**: Soft piano chord (C major) 
-- **Session Start**: Light two-tone notification
+- **Pomodoro Complete**: Simple bell tone with natural decay (1.5s)
+- **Break Complete**: Soft single tone (1.0s)
+- **Session Start**: Gentle notification tone (0.5s)
 
 All sounds are:
 - ✅ **Copyright-free** and safe for commercial use
-- 🎵 **Musically pleasant** - designed to be non-jarring
-- ⚡ **Optimized** for notification purposes (2-3 seconds)
+- 🔇 **Quiet & pleasant** - designed to be unobtrusive  
+- ⚡ **Brief** - optimized for notifications (0.5-1.5 seconds)
 - 🔊 **Cross-platform** compatible (WAV format)
 
 #### Custom Sounds
