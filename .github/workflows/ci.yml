@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        go-version: ['1.25']
 
     runs-on: ${{ matrix.os }}
 
@@ -53,7 +54,7 @@ jobs:
         run: make build
 
       - name: Upload coverage to Codecov (Ubuntu only)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.25'
         run: |
           make coverage
           bash <(curl -s https://codecov.io/bash)
@@ -67,10 +68,26 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: stable
+          go-version: '1.25'
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
           args: --timeout=3m
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.25'
+
+      - name: Run Gosec Security Scanner
+        uses: securecodewarrior/github-action-gosec@master
+        with:
+          args: './...'
