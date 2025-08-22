@@ -1,3 +1,5 @@
+version: 2
+
 run:
   timeout: 3m
   issues-exit-code: 1
@@ -11,45 +13,39 @@ output:
   print-linter-name: true
 
 linters-settings:
-  goimports:
-    local-prefixes: github.com/ethan-k/pomodoro-cli
-  
   gocritic:
     enabled-checks:
       - nestingReduce
       - unnamedResult
       - ruleguard
       - truncateCmp
-  
   govet:
     check-shadowing: true
-  
   misspell:
     locale: US
-  
   gocyclo:
     min-complexity: 15
 
 linters:
   disable-all: true
   enable:
-    - goimports
-    - golint
+    - revive
     - govet
     - errcheck
     - staticcheck
-    - unused
-    - gosimple
-    - structcheck
-    - varcheck
     - ineffassign
-    - deadcode
-    - typecheck
     - gosec
     - gocyclo
-    - gofmt
     - misspell
     - gocritic
+
+formatters:
+  enable:
+    - goimports
+
+formatters-settings:
+  goimports:
+    local-prefixes: github.com/ethan-k/pomodoro-cli
 
 issues:
   exclude-rules:
@@ -65,11 +61,12 @@ issues:
       linters:
         - lll
     
-    # Ignore certain golint issues
+    # Ignore certain revive issues
     - linters:
-        - golint
+        - revive
       text: "should have comment"
   
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+
