@@ -21,6 +21,20 @@ func ValidateDuration(d time.Duration) error {
 	return nil
 }
 
+// ValidateDurationString validates a duration string
+func ValidateDurationString(s string) error {
+	if s == "" {
+		return errors.New("duration cannot be empty")
+	}
+	
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return errors.New("invalid duration format (use format like '25m', '1h30m', '90s')")
+	}
+	
+	return ValidateDuration(d)
+}
+
 // ValidateDescription validates a session description
 func ValidateDescription(desc string, required bool) error {
 	trimmed := strings.TrimSpace(desc)
