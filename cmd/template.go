@@ -8,13 +8,14 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
+
 	"github.com/ethan-k/pomodoro-cli/internal/audio"
 	"github.com/ethan-k/pomodoro-cli/internal/db"
 	"github.com/ethan-k/pomodoro-cli/internal/model"
 	"github.com/ethan-k/pomodoro-cli/internal/notify"
 	"github.com/ethan-k/pomodoro-cli/internal/template"
 	"github.com/ethan-k/pomodoro-cli/internal/utils"
-	"github.com/spf13/cobra"
 )
 
 // templateCmd represents the template command
@@ -38,7 +39,7 @@ saved and can be reused when starting sessions.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
-		
+
 		description, _ := cmd.Flags().GetString("description")
 		duration, _ := cmd.Flags().GetString("duration")
 		tags, _ := cmd.Flags().GetStringSlice("tags")
@@ -72,7 +73,7 @@ var templateListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all session templates",
 	Long:  `List all available session templates with their details.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		tm, err := template.NewTemplateManager()
 		if err != nil {
 			return fmt.Errorf("error initializing template manager: %v", err)
@@ -89,7 +90,9 @@ var templateListCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(w, "NAME\tDURATION\tDESCRIPTION\tTAGS\n")
+		if _, err := fmt.Fprintf(w, "NAME\tDURATION\tDESCRIPTION\tTAGS\n"); err != nil {
+			return err
+		}
 		for _, t := range templates {
 			tags := strings.Join(t.Tags, ", ")
 			if len(tags) > 30 {
@@ -99,9 +102,13 @@ var templateListCmd = &cobra.Command{
 			if len(description) > 40 {
 				description = description[:37] + "..."
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.Name, t.Duration, description, tags)
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.Name, t.Duration, description, tags); err != nil {
+				return err
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			return err
+		}
 
 		return nil
 	},
@@ -113,7 +120,7 @@ var templateShowCmd = &cobra.Command{
 	Short: "Show details of a session template",
 	Long:  `Display detailed information about a specific session template.`,
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		name := args[0]
 
 		tm, err := template.NewTemplateManager()
@@ -169,7 +176,7 @@ var templateUpdateCmd = &cobra.Command{
 		description := existing.Description
 		duration := existing.Duration
 		tags := existing.Tags
-		var audioConfig *audio.Config = existing.Audio
+		audioConfig := existing.Audio
 
 		// Update with flag values if provided
 		if cmd.Flags().Changed("description") {
@@ -222,7 +229,10 @@ var templateDeleteCmd = &cobra.Command{
 		if !force {
 			fmt.Printf("Are you sure you want to delete template '%s'? (y/N): ", name)
 			var response string
-			fmt.Scanln(&response)
+			if _, err := fmt.Scanln(&response); err != nil {
+				fmt.Println("Input error; deletion cancelled")
+				return nil
+			}
 			if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
 				fmt.Println("Deletion cancelled")
 				return nil
@@ -271,7 +281,7 @@ var templateExportCmd = &cobra.Command{
 	Short: "Export a template to a file",
 	Long:  `Export a session template to a YAML file that can be shared or imported later.`,
 	Args:  cobra.ExactArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		name := args[0]
 		outputPath := args[1]
 
@@ -385,9 +395,9 @@ func runTemplateStart(cmd *cobra.Command, tmpl *template.Template) error {
 	sessionDuration := templateDuration
 	sessionNoWait := false
 	sessionAgo := time.Duration(0)
-	sessionJsonOutput := false
+	sessionJSONOutput := false
 	sessionSilentMode := false
-	
+
 	// Validate and sanitize inputs (same logic as start.go)
 	sessionDesc = utils.SanitizeDescription(sessionDesc)
 	if err := utils.ValidateDescription(sessionDesc, false); err != nil {
@@ -412,7 +422,7 @@ func runTemplateStart(cmd *cobra.Command, tmpl *template.Template) error {
 	}
 	defer func() {
 		if err := database.Close(); err != nil {
-			// Log error but don't override the main error
+			fmt.Fprintf(os.Stderr, "warning: closing DB: %v\n", err)
 		}
 	}()
 
@@ -429,7 +439,7 @@ func runTemplateStart(cmd *cobra.Command, tmpl *template.Template) error {
 		return fmt.Errorf("error creating session: %v", err)
 	}
 
-	if sessionJsonOutput {
+	if sessionJSONOutput {
 		fmt.Printf(`{"id":%d,"description":"%s","duration":"%s","end_time":"%s"}`+"\n",
 			id, sessionDesc, sessionDuration, endTime.Format(time.RFC3339))
 		return nil

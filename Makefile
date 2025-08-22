@@ -5,6 +5,7 @@ BINARY_NAME=pomodoro
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_DATE=$(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS=-ldflags "-X main.version=$(VERSION) -X main.buildDate=$(BUILD_DATE) -s -w"
+GOLANGCI_LINT_VERSION=v2.4.0
 
 # Go related variables
 GOBASE=$(shell pwd)
@@ -62,7 +63,8 @@ lint:
 	@if command -v golangci-lint >/dev/null 2>&1; then \
 		golangci-lint run; \
 	else \
-		echo "golangci-lint not installed. Run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.4.0; \
+		golangci-lint run; \
 	fi
 
 # Run go vet

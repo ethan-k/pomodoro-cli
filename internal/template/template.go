@@ -1,3 +1,4 @@
+// Package template manages Pomodoro session templates (create, list, import, export).
 package template
 
 import (
@@ -7,9 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/ethan-k/pomodoro-cli/internal/audio"
 	"github.com/ethan-k/pomodoro-cli/internal/utils"
-	"gopkg.in/yaml.v3"
 )
 
 // Template represents a session template
@@ -23,13 +25,13 @@ type Template struct {
 	UpdatedAt   time.Time     `yaml:"updated_at"`
 }
 
-// TemplateManager handles template operations
-type TemplateManager struct {
+// Manager handles template operations
+type Manager struct {
 	templatesDir string
 }
 
 // NewTemplateManager creates a new template manager
-func NewTemplateManager() (*TemplateManager, error) {
+func NewTemplateManager() (*Manager, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("error getting home dir: %v", err)
@@ -40,13 +42,13 @@ func NewTemplateManager() (*TemplateManager, error) {
 		return nil, fmt.Errorf("error creating templates directory: %v", err)
 	}
 
-	return &TemplateManager{
+	return &Manager{
 		templatesDir: templatesDir,
 	}, nil
 }
 
 // Create creates a new template
-func (tm *TemplateManager) Create(name, description, duration string, tags []string, audioConfig *audio.Config) error {
+func (tm *Manager) Create(name, description, duration string, tags []string, audioConfig *audio.Config) error {
 	if err := tm.validateTemplateName(name); err != nil {
 		return err
 	}
@@ -74,13 +76,13 @@ func (tm *TemplateManager) Create(name, description, duration string, tags []str
 }
 
 // Get retrieves a template by name
-func (tm *TemplateManager) Get(name string) (*Template, error) {
+func (tm *Manager) Get(name string) (*Template, error) {
 	if err := tm.validateTemplateName(name); err != nil {
 		return nil, err
 	}
 
 	templatePath := filepath.Join(tm.templatesDir, name+".yml")
-	data, err := os.ReadFile(templatePath)
+	data, err := os.ReadFile(templatePath) // #nosec G304 - path is constructed from validated name within controlled directory
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("template '%s' not found", name)
@@ -97,7 +99,7 @@ func (tm *TemplateManager) Get(name string) (*Template, error) {
 }
 
 // List returns all available templates
-func (tm *TemplateManager) List() ([]*Template, error) {
+func (tm *Manager) List() ([]*Template, error) {
 	files, err := os.ReadDir(tm.templatesDir)
 	if err != nil {
 		return nil, fmt.Errorf("error reading templates directory: %v", err)
@@ -123,7 +125,7 @@ func (tm *TemplateManager) List() ([]*Template, error) {
 }
 
 // Update updates an existing template
-func (tm *TemplateManager) Update(name, description, duration string, tags []string, audioConfig *audio.Config) error {
+func (tm *Manager) Update(name, description, duration string, tags []string, audioConfig *audio.Config) error {
 	if err := tm.validateTemplateName(name); err != nil {
 		return err
 	}
@@ -149,7 +151,7 @@ func (tm *TemplateManager) Update(name, description, duration string, tags []str
 }
 
 // Delete removes a template
-func (tm *TemplateManager) Delete(name string) error {
+func (tm *Manager) Delete(name string) error {
 	if err := tm.validateTemplateName(name); err != nil {
 		return err
 	}
@@ -166,14 +168,14 @@ func (tm *TemplateManager) Delete(name string) error {
 }
 
 // Exists checks if a template exists
-func (tm *TemplateManager) Exists(name string) bool {
+func (tm *Manager) Exists(name string) bool {
 	templatePath := filepath.Join(tm.templatesDir, name+".yml")
 	_, err := os.Stat(templatePath)
 	return err == nil
 }
 
 // Export exports a template to a file
-func (tm *TemplateManager) Export(name, outputPath string) error {
+func (tm *Manager) Export(name, outputPath string) error {
 	template, err := tm.Get(name)
 	if err != nil {
 		return err
@@ -184,7 +186,7 @@ func (tm *TemplateManager) Export(name, outputPath string) error {
 		return fmt.Errorf("error marshaling template: %v", err)
 	}
 
-	if err := os.WriteFile(outputPath, data, 0644); err != nil {
+	if err := os.WriteFile(outputPath, data, 0600); err != nil {
 		return fmt.Errorf("error writing template file: %v", err)
 	}
 
@@ -192,8 +194,15 @@ func (tm *TemplateManager) Export(name, outputPath string) error {
 }
 
 // Import imports a template from a file
-func (tm *TemplateManager) Import(templatePath string, overwrite bool) error {
-	data, err := os.ReadFile(templatePath)
+func (tm *Manager) Import(templatePath string, overwrite bool) error {
+	// Basic validation: only allow YAML files
+	cleaned := filepath.Clean(templatePath)
+	ext := strings.ToLower(filepath.Ext(cleaned))
+	if ext != ".yml" && ext != ".yaml" {
+		return fmt.Errorf("template file must have .yml or .yaml extension")
+	}
+
+	data, err := os.ReadFile(cleaned) // #nosec G304 - importing from user-provided path by design; extension validated
 	if err != nil {
 		return fmt.Errorf("error reading template file: %v", err)
 	}
@@ -227,7 +236,7 @@ func (tm *TemplateManager) Import(templatePath string, overwrite bool) error {
 }
 
 // save saves a template to disk
-func (tm *TemplateManager) save(template *Template) error {
+func (tm *Manager) save(template *Template) error {
 	templatePath := filepath.Join(tm.templatesDir, template.Name+".yml")
 
 	data, err := yaml.Marshal(template)
@@ -235,7 +244,7 @@ func (tm *TemplateManager) save(template *Template) error {
 		return fmt.Errorf("error marshaling template: %v", err)
 	}
 
-	if err := os.WriteFile(templatePath, data, 0644); err != nil {
+	if err := os.WriteFile(templatePath, data, 0600); err != nil {
 		return fmt.Errorf("error writing template file: %v", err)
 	}
 
@@ -243,7 +252,7 @@ func (tm *TemplateManager) save(template *Template) error {
 }
 
 // validateTemplateName validates the template name
-func (tm *TemplateManager) validateTemplateName(name string) error {
+func (tm *Manager) validateTemplateName(name string) error {
 	if name == "" {
 		return fmt.Errorf("template name cannot be empty")
 	}
@@ -260,11 +269,11 @@ func (tm *TemplateManager) validateTemplateName(name string) error {
 }
 
 // validateDuration validates the duration string
-func (tm *TemplateManager) validateDuration(duration string) error {
+func (tm *Manager) validateDuration(duration string) error {
 	return utils.ValidateDurationString(duration)
 }
 
 // GetTemplatesDir returns the templates directory path
-func (tm *TemplateManager) GetTemplatesDir() string {
+func (tm *Manager) GetTemplatesDir() string {
 	return tm.templatesDir
 }

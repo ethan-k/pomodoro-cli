@@ -26,12 +26,12 @@ func ValidateDurationString(s string) error {
 	if s == "" {
 		return errors.New("duration cannot be empty")
 	}
-	
+
 	d, err := time.ParseDuration(s)
 	if err != nil {
 		return errors.New("invalid duration format (use format like '25m', '1h30m', '90s')")
 	}
-	
+
 	return ValidateDuration(d)
 }
 
