@@ -50,7 +50,7 @@ func NewDB() (*InternalDB, error) {
 	}
 
 	dbPath := filepath.Join(home, ".local", "share", "pomodoro", "history.db")
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0750); err != nil {
 		return nil, fmt.Errorf("error creating DB dir: %v", err)
 	}
 
@@ -263,7 +263,11 @@ func (d *InternalDB) GetSessionsByDateRange(startDate, endDate time.Time) ([]Pom
 	if err != nil {
 		return nil, fmt.Errorf("error querying sessions: %v", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't override the main error
+		}
+	}()
 
 	var sessions []PomodoroSession
 	for rows.Next() {

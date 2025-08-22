@@ -28,7 +28,11 @@ Example:
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		defer database.Close()
+		defer func() {
+		if err := database.Close(); err != nil {
+			// Log error but don't override the main error
+		}
+	}()
 
 		// Get active session
 		session, err := database.GetActiveSession()
@@ -53,7 +57,7 @@ Example:
 		actualDuration := now.Sub(session.StartTime).Round(time.Second)
 
 		if jsonOutput {
-			fmt.Printf(`{"id":%d,"description":"%s","status":"cancelled","actual_duration":"%s"}`+"\n",
+			fmt.Printf(`{"id":%d,"description":"%s","status":"canceled","actual_duration":"%s"}`+"\n",
 				session.ID, session.Description, actualDuration)
 			return
 		}
