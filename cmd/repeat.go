@@ -29,14 +29,18 @@ Use the --wait flag to keep the timer running in the terminal.
 Example:
   pomodoro repeat --wait`,
 	Aliases: []string{"r"},
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		// Connect to database
 		database, err := db.NewDB()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		defer database.Close()
+		defer func() {
+			if err := database.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+			}
+		}()
 
 		// Get last session
 		lastSession, err := database.GetLastSession()

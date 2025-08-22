@@ -30,7 +30,7 @@ Examples:
   pomodoro config --list
   pomodoro config goals.daily_count 10
   pomodoro config defaults.pomodoro_duration 30m`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		// Initialize config file
 		if configInit {
 			cfg := config.DefaultConfig()

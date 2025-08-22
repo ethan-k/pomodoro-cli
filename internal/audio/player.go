@@ -136,7 +136,7 @@ func (p *SystemPlayer) tryLinuxPlayer(path string) error {
 			continue
 		}
 		
-		cmd := exec.Command(player, path)
+		cmd := exec.Command(player, path) // #nosec G204 - player is validated with exec.LookPath, path is embedded resource
 		if err := cmd.Run(); err == nil {
 			return nil
 		}

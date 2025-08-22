@@ -21,13 +21,17 @@ The paused time will not count toward the session duration.
 
 Example:
   pomodoro pause`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		database, err := db.NewDB()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		defer database.Close()
+		defer func() {
+			if err := database.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+			}
+		}()
 
 		// Get active session
 		session, err := database.GetActiveSession()

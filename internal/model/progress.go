@@ -1,3 +1,4 @@
+// Package model contains the TUI models for the Pomodoro timer progress display
 package model
 
 import (

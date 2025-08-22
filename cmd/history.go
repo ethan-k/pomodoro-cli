@@ -40,14 +40,18 @@ Examples:
   pomodoro history --output opf > pomodoros.json
   pomodoro history --output json --limit 10`,
 	Aliases: []string{"h"},
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		// Connect to database
 		database, err := db.NewDB()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		defer database.Close()
+		defer func() {
+			if err := database.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+			}
+		}()
 
 		var sessions []db.PomodoroSession
 
@@ -64,7 +68,7 @@ Examples:
 			if daysToMonday == 0 { // Sunday
 				daysToMonday = 6
 			} else {
-				daysToMonday = daysToMonday - 1
+				daysToMonday--
 			}
 			startDate = time.Date(now.Year(), now.Month(), now.Day()-daysToMonday, 0, 0, 0, 0, now.Location())
 			endDate = now

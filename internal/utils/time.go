@@ -1,3 +1,4 @@
+// Package utils provides utility functions for time formatting and validation
 package utils
 
 import (

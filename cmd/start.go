@@ -19,7 +19,6 @@ var (
 	description      string
 	tags             []string
 	duration         time.Duration
-	wait             bool
 	noWait           bool
 	ago              time.Duration
 	jsonOutput       bool
@@ -39,7 +38,7 @@ Use flags to specify tags, duration, or if the timer should block.
 Example:
   pomodoro start "Refactor API" -t coding,backend --duration 50m`,
 	Aliases: []string{"s"},
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		if len(args) > 0 {
 			description = args[0]
 		}
@@ -69,7 +68,11 @@ Example:
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		defer database.Close()
+		defer func() {
+			if err := database.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+			}
+		}()
 
 		tagsCSV := strings.Join(tags, ",")
 		id, err := database.CreateSession(
@@ -192,7 +195,11 @@ func runBreakSession(duration time.Duration, wait bool) {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+		}
+	}()
 
 	id, err := database.CreateSession(startTime, endTime, "Break", int64(duration.Seconds()), "", true)
 	if err != nil {
@@ -231,7 +238,11 @@ func runPomodoroSession() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+		}
+	}()
 
 	tagsCSV := strings.Join(tags, ",")
 	id, err := database.CreateSession(startTime, endTime, description, int64(duration.Seconds()), tagsCSV, false)
@@ -263,7 +274,11 @@ func showQuickStatus() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+		}
+	}()
 
 	sessions, err := database.GetTodaySessions()
 	if err != nil {
