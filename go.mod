@@ -1,6 +1,6 @@
 module github.com/ethan-k/pomodoro-cli
 
-go 1.24.1
+go 1.25
 
 require (
 	github.com/gen2brain/beeep v0.0.0-20240516210008-9c006672e7f4

@@ -1,0 +1,12 @@
+name: research
+description: Research and documentation work
+duration: 45m
+tags:
+  - research
+  - documentation
+  - learning
+audio:
+  enabled: true
+  volume: 0.3
+created_at: 2025-08-22T13:15:00Z
+updated_at: 2025-08-22T13:15:00Z
