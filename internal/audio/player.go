@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/gen2brain/beeep"
 )
@@ -117,7 +118,13 @@ func (p *SystemPlayer) tryMacOSPlayer(path string) error {
 		return fmt.Errorf("not on macOS")
 	}
 
-	cmd := exec.Command("afplay", path)
+	// Sanitize path to prevent command injection
+	cleanPath := filepath.Clean(path)
+	if strings.Contains(cleanPath, "..") || strings.Contains(cleanPath, ";") || strings.Contains(cleanPath, "&") {
+		return fmt.Errorf("invalid file path")
+	}
+
+	cmd := exec.Command("afplay", cleanPath)
 	return cmd.Run()
 }
 
@@ -125,6 +132,12 @@ func (p *SystemPlayer) tryMacOSPlayer(path string) error {
 func (p *SystemPlayer) tryLinuxPlayer(path string) error {
 	if runtime.GOOS != "linux" {
 		return fmt.Errorf("not on Linux")
+	}
+
+	// Sanitize path to prevent command injection
+	cleanPath := filepath.Clean(path)
+	if strings.Contains(cleanPath, "..") || strings.Contains(cleanPath, ";") || strings.Contains(cleanPath, "&") {
+		return fmt.Errorf("invalid file path")
 	}
 
 	// Try different Linux audio players in order of preference
@@ -136,7 +149,7 @@ func (p *SystemPlayer) tryLinuxPlayer(path string) error {
 			continue
 		}
 
-		cmd := exec.Command(player, path) // #nosec G204 - player is validated with exec.LookPath, path is embedded resource
+		cmd := exec.Command(player, cleanPath)
 		if err := cmd.Run(); err == nil {
 			return nil
 		}

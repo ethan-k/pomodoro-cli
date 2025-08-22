@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/ethan-k/pomodoro-cli/internal/audio"
 	"github.com/ethan-k/pomodoro-cli/internal/db"
-	"gopkg.in/yaml.v3"
 )
 
 // Config represents the application configuration

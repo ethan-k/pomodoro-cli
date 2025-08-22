@@ -57,11 +57,11 @@ Example:
 			os.Exit(1)
 		}
 
-		if jsonOutput {
-			fmt.Printf(`{"id":%d,"description":"%s","status":"paused","paused_at":"%s"}`+"\n",
-				session.ID, session.Description, now.Format(time.RFC3339))
-			return
-		}
+		// if jsonOutput {
+		// fmt.Printf(`{"id":%d,"description":"%s","status":"paused","paused_at":"%s"}`+"\n",
+		// session.ID, session.Description, now.Format(time.RFC3339))
+		// return
+		// }
 
 		fmt.Printf("⏸️  Paused session: %s\n", session.Description)
 		fmt.Println("Use 'pomodoro resume' to continue.")
