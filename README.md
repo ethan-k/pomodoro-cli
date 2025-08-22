@@ -381,18 +381,32 @@ The project uses GitHub Actions for:
 - **Security Scanning**: Automated security analysis with Gosec
 - **Code Quality**: Linting with golangci-lint
 
-### Creating a Release
+### Automatic Releases
 
-For maintainers:
+Releases are automatically created when code is pushed to the main branch:
+
+1. **Automatic Publishing**: Every push to main branch triggers automatic version bumping and release creation
+2. **Semantic Versioning**: Version numbers are determined by commit message conventions:
+   - `feat:` → Minor version bump (e.g., 1.0.0 → 1.1.0) 
+   - `fix:` → Patch version bump (e.g., 1.0.0 → 1.0.1)
+   - `feat!:` or `BREAKING CHANGE` → Major version bump (e.g., 1.0.0 → 2.0.0)
+3. **Multi-platform Binaries**: All releases include binaries for Linux, macOS, and Windows
+
+### Manual Release (For Maintainers)
+
+If you need to create a release manually:
 
 ```bash
+# Make script executable (one-time setup)
+chmod +x scripts/deploy.sh
+
 # Create a new release (replace 1.0.0 with actual version)
 ./scripts/deploy.sh 1.0.0
 ```
 
 This will:
 1. Run tests and builds
-2. Create and push a git tag
+2. Create and push a git tag  
 3. Trigger GitHub Actions to build and publish release binaries
 
 ### High Priority Features

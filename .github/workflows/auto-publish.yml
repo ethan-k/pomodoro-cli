@@ -1,0 +1,137 @@
+name: Auto Publish Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should-release: ${{ steps.check.outputs.should-release }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if should create release
+        id: check
+        run: |
+          # Get the latest tag (if any)
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          
+          # Get commits since last tag
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            COMMITS=$(git log --oneline --pretty=format:"%s")
+          else
+            COMMITS=$(git log ${LATEST_TAG}..HEAD --oneline --pretty=format:"%s")
+          fi
+          
+          echo "Commits since last tag:"
+          echo "$COMMITS"
+          
+          # Check if there are any commits since last tag
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits since last tag"
+            echo "should-release=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Determine version bump based on conventional commits
+          MAJOR_BUMP=false
+          MINOR_BUMP=false
+          PATCH_BUMP=false
+          
+          while IFS= read -r commit; do
+            if echo "$commit" | grep -qE "^(feat|feature)(\(.+\))?\!:"; then
+              MAJOR_BUMP=true
+            elif echo "$commit" | grep -qE "^(BREAKING CHANGE|breaking)"; then
+              MAJOR_BUMP=true  
+            elif echo "$commit" | grep -qE "^(feat|feature)(\(.+\))?:"; then
+              MINOR_BUMP=true
+            elif echo "$commit" | grep -qE "^(fix|bug)(\(.+\))?:"; then
+              PATCH_BUMP=true
+            elif echo "$commit" | grep -qE "^(chore|docs|style|refactor|test)(\(.+\))?:"; then
+              PATCH_BUMP=true
+            else
+              # Default to patch for any commit
+              PATCH_BUMP=true
+            fi
+          done <<< "$COMMITS"
+          
+          # Extract current version numbers
+          CURRENT_VERSION=$(echo $LATEST_TAG | sed 's/v//')
+          if [ "$CURRENT_VERSION" = "0.0.0" ]; then
+            MAJOR=0
+            MINOR=1
+            PATCH=0
+          else
+            MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+            MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)  
+            PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
+          fi
+          
+          # Bump version
+          if [ "$MAJOR_BUMP" = "true" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$MINOR_BUMP" = "true" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          elif [ "$PATCH_BUMP" = "true" ]; then
+            PATCH=$((PATCH + 1))
+          fi
+          
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          
+          echo "Version bump: $LATEST_TAG -> $NEW_VERSION"
+          echo "should-release=true" >> $GITHUB_OUTPUT
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+  create-tag:
+    needs: check-changes
+    if: needs.check-changes.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push tag
+        run: |
+          VERSION="${{ needs.check-changes.outputs.version }}"
+          echo "Creating tag: $VERSION"
+          
+          # Create annotated tag
+          git tag -a "$VERSION" -m "Automatic release $VERSION"
+          
+          # Push tag
+          git push origin "$VERSION"
+          
+          echo "Tag $VERSION created and pushed successfully"
+
+  trigger-release:
+    needs: [check-changes, create-tag]
+    if: needs.check-changes.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for release workflow
+        run: |
+          echo "Tag ${{ needs.check-changes.outputs.version }} has been created."
+          echo "The release workflow will now automatically build and publish binaries."
+          echo "Monitor progress at: https://github.com/${{ github.repository }}/actions"
