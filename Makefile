@@ -56,13 +56,13 @@ fmt:
 	@echo "Formatting code..."
 	@go fmt ./...
 
-# Run golint
+# Run golangci-lint
 lint:
 	@echo "Running linter..."
-	@if command -v golint >/dev/null 2>&1; then \
-		golint ./...; \
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run; \
 	else \
-		echo "golint not installed. Run: go install golang.org/x/lint/golint@latest"; \
+		echo "golangci-lint not installed. Run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
 	fi
 
 # Run go vet

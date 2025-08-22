@@ -35,14 +35,18 @@ You can use the --format flag to customize the output using placeholders:
 Example:
   pomodoro status --format "%r remaining for %d"
   pomodoro status --wait (to show a live progress bar)`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		// Connect to database
 		database, err := db.NewDB()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		defer database.Close()
+		defer func() {
+			if err := database.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+			}
+		}()
 
 		// Get active session
 		session, err := database.GetActiveSession()

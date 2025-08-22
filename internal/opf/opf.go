@@ -1,3 +1,4 @@
+// Package opf provides Open Pomodoro Format (OPF) export functionality
 package opf
 
 import (
@@ -7,8 +8,8 @@ import (
 	"github.com/ethan-k/pomodoro-cli/internal/db"
 )
 
-// OPFPomodoro represents a Pomodoro in Open Pomodoro Format
-type OPFPomodoro struct {
+// Pomodoro represents a single Pomodoro session in OPF format
+type Pomodoro struct {
 	ID          string   `json:"id"`
 	StartedAt   string   `json:"started_at"`
 	Duration    int      `json:"duration"`
@@ -17,13 +18,13 @@ type OPFPomodoro struct {
 	Type        string   `json:"type"` // "pomodoro" or "break"
 }
 
-// OPFExport represents the root object for Open Pomodoro Format export
-type OPFExport struct {
-	Pomodoros []OPFPomodoro `json:"pomodoros"`
+// Export represents the root object for Open Pomodoro Format export
+type Export struct {
+	Pomodoros []Pomodoro `json:"pomodoros"`
 }
 
 // ConvertToOPF converts a PomodoroSession to OPF format
-func ConvertToOPF(session *db.PomodoroSession) OPFPomodoro {
+func ConvertToOPF(session *db.PomodoroSession) Pomodoro {
 	pomType := "pomodoro"
 	if session.WasBreak {
 		pomType = "break"
@@ -35,7 +36,7 @@ func ConvertToOPF(session *db.PomodoroSession) OPFPomodoro {
 		tags = splitTags(session.TagsCSV)
 	}
 
-	return OPFPomodoro{
+	return Pomodoro{
 		ID:          formatID(session.ID),
 		StartedAt:   formatTime(session.StartTime),
 		Duration:    int(session.DurationSec / 60), // Convert to minutes
@@ -46,14 +47,14 @@ func ConvertToOPF(session *db.PomodoroSession) OPFPomodoro {
 }
 
 // ConvertSessionsToOPF converts multiple PomodoroSessions to OPF format
-func ConvertSessionsToOPF(sessions []db.PomodoroSession) OPFExport {
-	opfPomodoros := make([]OPFPomodoro, 0, len(sessions))
+func ConvertSessionsToOPF(sessions []db.PomodoroSession) Export {
+	opfPomodoros := make([]Pomodoro, 0, len(sessions))
 
 	for _, session := range sessions {
 		opfPomodoros = append(opfPomodoros, ConvertToOPF(&session))
 	}
 
-	return OPFExport{
+	return Export{
 		Pomodoros: opfPomodoros,
 	}
 }
@@ -65,7 +66,7 @@ func ExportToJSON(sessions []db.PomodoroSession) ([]byte, error) {
 }
 
 // Helper functions
-func formatID(id int64) string {
+func formatID(_ int64) string {
 	return time.Now().Format("20060102") + "-" + time.Now().Format("150405") + "-" + time.Now().Format("000")
 }
 

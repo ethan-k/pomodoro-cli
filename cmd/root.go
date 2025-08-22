@@ -26,9 +26,10 @@ It aims to be fast, scriptable, and visually informative.`,
 func SetVersionInfo(version, buildDate string) {
 	appVersion = version
 	appBuildDate = buildDate
-	rootCmd.Version = fmt.Sprintf("%s (built on %s)", version, buildDate)
+	rootCmd.Version = fmt.Sprintf("%s (built on %s)", version, appBuildDate)
 }
 
+// Execute runs the root command of the CLI application
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {

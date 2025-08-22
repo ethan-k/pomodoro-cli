@@ -1,3 +1,4 @@
+// Package audio provides sound notification functionality for the Pomodoro timer
 package audio
 
 import (
@@ -10,8 +11,11 @@ import (
 type SoundType string
 
 const (
+	// PomodoroComplete represents the sound played when a Pomodoro session completes
 	PomodoroComplete SoundType = "pomodoro_complete"
+	// BreakComplete represents the sound played when a break session completes
 	BreakComplete    SoundType = "break_complete"
+	// SessionStart represents the sound played when starting a session
 	SessionStart     SoundType = "session_start"
 )
 
@@ -78,17 +82,21 @@ func PlayAsync(player Player, soundType SoundType) {
 	}
 
 	go func() {
-		if err := player.Play(soundType); err != nil {
-			// Don't print error in production, just log silently
-			// fmt.Printf("Audio playback failed: %v\n", err)
-		}
+		_ = player.Play(soundType) // Ignore audio playback errors in production
 	}()
 }
 
 // NoOpPlayer is a no-operation player for when audio is disabled
 type NoOpPlayer struct{}
 
-func (p *NoOpPlayer) Play(soundType SoundType) error { return nil }
-func (p *NoOpPlayer) SetVolume(volume float64) error { return nil }
-func (p *NoOpPlayer) IsEnabled() bool                { return false }
-func (p *NoOpPlayer) Close() error                   { return nil }
+// Play does nothing and returns no error for the no-op player
+func (p *NoOpPlayer) Play(_ SoundType) error { return nil }
+
+// SetVolume does nothing and returns no error for the no-op player  
+func (p *NoOpPlayer) SetVolume(_ float64) error { return nil }
+
+// IsEnabled always returns false for the no-op player
+func (p *NoOpPlayer) IsEnabled() bool { return false }
+
+// Close does nothing and returns no error for the no-op player
+func (p *NoOpPlayer) Close() error { return nil }

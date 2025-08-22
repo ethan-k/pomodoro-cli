@@ -1,3 +1,4 @@
+// Package config handles configuration management for the Pomodoro timer application
 package config
 
 import (
@@ -89,7 +90,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Read config file
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(configPath) // #nosec G304 - configPath is constructed from trusted sources
 	if err != nil {
 		return nil, fmt.Errorf("error reading config file: %v", err)
 	}
@@ -116,7 +117,7 @@ func SaveConfig(config *Config) error {
 	}
 
 	configDir := filepath.Join(home, ".config", "pomodoro")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, 0750); err != nil {
 		return fmt.Errorf("error creating config directory: %v", err)
 	}
 
@@ -129,7 +130,7 @@ func SaveConfig(config *Config) error {
 	}
 
 	// Write config file
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	if err := os.WriteFile(configPath, data, 0600); err != nil {
 		return fmt.Errorf("error writing config file: %v", err)
 	}
 
@@ -147,7 +148,11 @@ func GetCurrentGoalStatus() (*GoalStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+		}
+	}()
 
 	// Get today's sessions
 	today := time.Now().Truncate(24 * time.Hour)
@@ -164,7 +169,7 @@ func GetCurrentGoalStatus() (*GoalStatus, error) {
 	if daysToMonday == 0 { // Sunday
 		daysToMonday = 6
 	} else {
-		daysToMonday = daysToMonday - 1
+		daysToMonday--
 	}
 	weekStart := time.Date(now.Year(), now.Month(), now.Day()-daysToMonday, 0, 0, 0, 0, now.Location())
 	weekSessions, err := database.GetSessionsByDateRange(weekStart, now)

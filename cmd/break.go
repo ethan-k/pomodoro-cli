@@ -1,3 +1,4 @@
+// Package cmd contains the CLI commands for the Pomodoro timer application
 package cmd
 
 import (
@@ -17,7 +18,7 @@ import (
 var (
 	breakDuration time.Duration
 	breakWait     bool
-	breakJson     bool
+	breakJSON     bool
 	breakSilent   bool
 )
 
@@ -33,7 +34,7 @@ Use the --wait flag to keep the timer running in the terminal.
 Example:
   pomodoro break 10m --wait`,
 	Aliases: []string{"b"},
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		// If duration is provided as argument, override flag
 		if len(args) > 0 {
 			var err error
@@ -58,7 +59,11 @@ Example:
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		defer database.Close()
+		defer func() {
+			if err := database.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+			}
+		}()
 
 		// Create break session in database
 		id, err := database.CreateSession(
@@ -75,7 +80,7 @@ Example:
 		}
 
 		// If JSON output is requested, just print the session info and exit
-		if breakJson {
+		if breakJSON {
 			fmt.Printf(`{"id":%d,"type":"break","duration":"%s","end_time":"%s"}`+"\n",
 				id, breakDuration, endTime.Format(time.RFC3339))
 			return
@@ -109,6 +114,6 @@ func init() {
 	// Define flags for the break command
 	breakCmd.Flags().DurationVarP(&breakDuration, "duration", "d", 5*time.Minute, "Duration of the break (e.g., 5m, 10m)")
 	breakCmd.Flags().BoolVarP(&breakWait, "wait", "w", false, "Wait for the break to complete before exiting")
-	breakCmd.Flags().BoolVar(&breakJson, "json", false, "Output in JSON format (for non-TTY usage)")
+	breakCmd.Flags().BoolVar(&breakJSON, "json", false, "Output in JSON format (for non-TTY usage)")
 	breakCmd.Flags().BoolVar(&breakSilent, "silent", false, "Disable audio notifications for this break")
 }

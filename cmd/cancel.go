@@ -21,14 +21,18 @@ This will update the session in the database with the current time as the end ti
 Example:
   pomodoro cancel`,
 	Aliases: []string{"c"},
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		// Connect to database
 		database, err := db.NewDB()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		defer database.Close()
+		defer func() {
+			if err := database.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error closing database: %v\n", err)
+			}
+		}()
 
 		// Get active session
 		session, err := database.GetActiveSession()

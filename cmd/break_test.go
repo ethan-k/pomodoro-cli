@@ -155,7 +155,7 @@ func TestBreakCommand_DurationParsing(t *testing.T) {
 // Test break session creation with mock
 func TestBreakCommand_SessionCreation(t *testing.T) {
 	mockDB := &mockDB{
-		CreateSessionFunc: func(start, end time.Time, description string, durationSec int64, tagsCSV string, wasBreak bool) (int64, error) {
+		CreateSessionFunc: func(_, _ time.Time, description string, _ int64, _ string, wasBreak bool) (int64, error) {
 			// Verify that wasBreak is true for break sessions
 			if !wasBreak {
 				t.Error("Expected wasBreak to be true for break sessions")
