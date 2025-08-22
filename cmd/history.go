@@ -9,7 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/ethan-k/pomodoro-cli/internal/config"
 	"github.com/ethan-k/pomodoro-cli/internal/db"
+	"github.com/ethan-k/pomodoro-cli/internal/goals"
 	"github.com/ethan-k/pomodoro-cli/internal/opf"
 )
 
@@ -212,6 +214,64 @@ Examples:
 				pomodoroCount,
 				breakCount)
 			fmt.Printf("Total time: %s\n", totalDuration.Round(time.Minute))
+
+			// Add goal progress if showing today or week
+			cfg, err := config.LoadConfig()
+			if err == nil && (historyToday || historyWeek) {
+				goalManager := goals.NewGoalManager(database, cfg)
+				
+				if historyToday {
+					if daily, err := goalManager.GetDailyGoalProgress(); err == nil {
+						fmt.Printf("\n🎯 Daily Goal Progress:\n")
+						fmt.Printf("   Target: %d pomodoros\n", daily.Target)
+						fmt.Printf("   Completed: %d (%.1f%%)", daily.Current, daily.Percentage)
+						if daily.IsComplete {
+							if daily.IsOverAchieved {
+								fmt.Print(" 🌟 Overachiever!")
+							} else {
+								fmt.Print(" ✅ Complete!")
+							}
+						} else {
+							fmt.Printf(" (%d remaining)", daily.Remaining)
+						}
+						fmt.Println()
+					}
+				}
+				
+				if historyWeek {
+					if weekly, err := goalManager.GetWeeklyGoalProgress(); err == nil {
+						fmt.Printf("\n📊 Weekly Goal Progress:\n")
+						fmt.Printf("   Target: %d pomodoros\n", weekly.Target)
+						fmt.Printf("   Completed: %d (%.1f%%)", weekly.Current, weekly.Percentage)
+						if weekly.IsComplete {
+							if weekly.IsOverAchieved {
+								fmt.Print(" 🌟 Overachiever!")
+							} else {
+								fmt.Print(" ✅ Complete!")
+							}
+						} else {
+							fmt.Printf(" (%d remaining)", weekly.Remaining)
+							if weekly.RequiredPerDay > 0 {
+								fmt.Printf("\n   Required per day: %.1f", weekly.RequiredPerDay)
+							}
+						}
+						fmt.Println()
+					}
+				}
+
+				// Show streak information
+				if streak, err := goalManager.GetStreak(); err == nil && streak.Current > 0 {
+					fmt.Printf("\n🔥 Current streak: %d days", streak.Current)
+					if streak.IsActive {
+						fmt.Print(" (active)")
+					}
+					fmt.Printf(" | Best: %d days", streak.Best)
+					if streak.Best > 0 {
+						fmt.Print(" 🏆")
+					}
+					fmt.Println()
+				}
+			}
 		}
 	},
 }
