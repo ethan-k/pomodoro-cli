@@ -79,8 +79,8 @@ func PlayAsync(player Player, soundType SoundType) {
 
 	go func() {
 		if err := player.Play(soundType); err != nil {
-			// Don't print error in production, just log silently
-			// fmt.Printf("Audio playback failed: %v\n", err)
+			// Intentionally ignoring audio playback errors to prevent disrupting user workflow
+			// Audio is a nice-to-have feature, not critical functionality
 		}
 	}()
 }

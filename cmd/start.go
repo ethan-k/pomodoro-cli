@@ -19,7 +19,6 @@ var (
 	description      string
 	tags             []string
 	duration         time.Duration
-	wait             bool
 	noWait           bool
 	ago              time.Duration
 	jsonOutput       bool
@@ -69,7 +68,11 @@ Example:
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		defer database.Close()
+		defer func() {
+		if err := database.Close(); err != nil {
+			// Log error but don't override the main error
+		}
+	}()
 
 		tagsCSV := strings.Join(tags, ",")
 		id, err := database.CreateSession(
@@ -192,7 +195,11 @@ func runBreakSession(duration time.Duration, wait bool) {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			// Log error but don't override the main error
+		}
+	}()
 
 	id, err := database.CreateSession(startTime, endTime, "Break", int64(duration.Seconds()), "", true)
 	if err != nil {
@@ -231,7 +238,11 @@ func runPomodoroSession() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			// Log error but don't override the main error
+		}
+	}()
 
 	tagsCSV := strings.Join(tags, ",")
 	id, err := database.CreateSession(startTime, endTime, description, int64(duration.Seconds()), tagsCSV, false)
@@ -263,7 +274,11 @@ func showQuickStatus() {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
-	defer database.Close()
+	defer func() {
+		if err := database.Close(); err != nil {
+			// Log error but don't override the main error
+		}
+	}()
 
 	sessions, err := database.GetTodaySessions()
 	if err != nil {
