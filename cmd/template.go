@@ -355,54 +355,56 @@ func init() {
 // runTemplateStart runs a pomodoro session from a template
 func runTemplateStart(cmd *cobra.Command, tmpl *template.Template) error {
 	// Parse template duration
-	duration, err := time.ParseDuration(tmpl.Duration)
+	templateDuration, err := time.ParseDuration(tmpl.Duration)
 	if err != nil {
 		return fmt.Errorf("invalid duration in template: %v", err)
 	}
 
 	// Get template values
 	desc := tmpl.Description
-	tags := tmpl.Tags
+	templateTags := tmpl.Tags
 
 	// Override with command line flags if provided
 	if cmd.Flags().Changed("duration") {
 		durationStr, _ := cmd.Flags().GetString("duration")
-		duration, err = time.ParseDuration(durationStr)
+		templateDuration, err = time.ParseDuration(durationStr)
 		if err != nil {
 			return fmt.Errorf("invalid duration: %v", err)
 		}
 	}
 	if cmd.Flags().Changed("tags") {
-		tags, _ = cmd.Flags().GetStringSlice("tags")
+		templateTags, _ = cmd.Flags().GetStringSlice("tags")
 	}
 	if cmd.Flags().Changed("message") {
 		desc, _ = cmd.Flags().GetString("message")
 	}
 
-	// Use the existing start command logic
-	return runStartWithParams(desc, duration, tags, false, false, false, time.Duration(0))
-}
-
-// runStartWithParams runs a start command with the given parameters
-func runStartWithParams(description string, duration time.Duration, tags []string, noWait, jsonOutput, silentMode bool, ago time.Duration) error {
-
-	// Validate and sanitize inputs
-	description = utils.SanitizeDescription(description)
-	if err := utils.ValidateDescription(description, false); err != nil {
+	// Local variables for this session (no global state dependencies)
+	sessionDesc := desc
+	sessionTags := templateTags
+	sessionDuration := templateDuration
+	sessionNoWait := false
+	sessionAgo := time.Duration(0)
+	sessionJsonOutput := false
+	sessionSilentMode := false
+	
+	// Validate and sanitize inputs (same logic as start.go)
+	sessionDesc = utils.SanitizeDescription(sessionDesc)
+	if err := utils.ValidateDescription(sessionDesc, false); err != nil {
 		return fmt.Errorf("invalid description: %v", err)
 	}
 
-	if err := utils.ValidateDuration(duration); err != nil {
+	if err := utils.ValidateDuration(sessionDuration); err != nil {
 		return fmt.Errorf("invalid duration: %v", err)
 	}
 
-	tags = utils.SanitizeTags(tags)
-	if err := utils.ValidateTags(tags); err != nil {
+	sessionTags = utils.SanitizeTags(sessionTags)
+	if err := utils.ValidateTags(sessionTags); err != nil {
 		return fmt.Errorf("invalid tags: %v", err)
 	}
 
-	startTime := time.Now().Add(-ago)
-	endTime := startTime.Add(duration)
+	startTime := time.Now().Add(-sessionAgo)
+	endTime := startTime.Add(sessionDuration)
 
 	database, err := db.NewDB()
 	if err != nil {
@@ -414,12 +416,12 @@ func runStartWithParams(description string, duration time.Duration, tags []strin
 		}
 	}()
 
-	tagsCSV := strings.Join(tags, ",")
+	tagsCSV := strings.Join(sessionTags, ",")
 	id, err := database.CreateSession(
 		startTime,
 		endTime,
-		description,
-		int64(duration.Seconds()),
+		sessionDesc,
+		int64(sessionDuration.Seconds()),
 		tagsCSV,
 		false,
 	)
@@ -427,24 +429,24 @@ func runStartWithParams(description string, duration time.Duration, tags []strin
 		return fmt.Errorf("error creating session: %v", err)
 	}
 
-	if jsonOutput {
+	if sessionJsonOutput {
 		fmt.Printf(`{"id":%d,"description":"%s","duration":"%s","end_time":"%s"}`+"\n",
-			id, description, duration, endTime.Format(time.RFC3339))
+			id, sessionDesc, sessionDuration, endTime.Format(time.RFC3339))
 		return nil
 	}
 
-	if noWait {
-		fmt.Printf("Started Pomodoro ID %d: %s for %s (running in background)\n", id, description, duration)
+	if sessionNoWait {
+		fmt.Printf("Started Pomodoro ID %d: %s for %s (running in background)\n", id, sessionDesc, sessionDuration)
 		return nil
 	}
 
-	p := model.NewPomodoroModel(id, description, startTime, duration, false)
+	p := model.NewPomodoroModel(id, sessionDesc, startTime, sessionDuration, false)
 
 	if _, err := tea.NewProgram(p).Run(); err != nil {
 		return fmt.Errorf("error running UI: %v", err)
 	}
 
-	if err := notify.NotifyPomodoroCompleteWithOptions(description, silentMode); err != nil {
+	if err := notify.NotifyPomodoroCompleteWithOptions(sessionDesc, sessionSilentMode); err != nil {
 		return fmt.Errorf("error sending notification: %v", err)
 	}
 
