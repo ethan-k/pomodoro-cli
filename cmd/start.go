@@ -9,7 +9,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
+	"github.com/ethan-k/pomodoro-cli/internal/config"
 	"github.com/ethan-k/pomodoro-cli/internal/db"
+	"github.com/ethan-k/pomodoro-cli/internal/goals"
 	"github.com/ethan-k/pomodoro-cli/internal/model"
 	"github.com/ethan-k/pomodoro-cli/internal/notify"
 	"github.com/ethan-k/pomodoro-cli/internal/utils"
@@ -108,6 +110,11 @@ Example:
 
 		if err := notify.NotifyPomodoroCompleteWithOptions(description, silentMode); err != nil {
 			fmt.Fprintf(os.Stderr, "Error sending notification: %v\n", err)
+		}
+
+		// Check for goal achievements after session completion
+		if !jsonOutput {
+			checkGoalAchievements()
 		}
 
 		// Continuous mode: prompt for next action
@@ -261,6 +268,9 @@ func runPomodoroSession() {
 		fmt.Fprintf(os.Stderr, "Error sending notification: %v\n", err)
 	}
 
+	// Check for goal achievements after session completion
+	checkGoalAchievements()
+
 	// Continue the continuous mode loop
 	if continuousMode {
 		handleContinuousMode()
@@ -301,6 +311,121 @@ func showQuickStatus() {
 	fmt.Printf("☕ Breaks: %d\n", breakCount)
 	fmt.Printf("📈 Total sessions: %d\n", len(sessions))
 
+	// Show goal progress
+	cfg, err := config.LoadConfig()
+	if err == nil {
+		goalManager := goals.NewGoalManager(database, cfg)
+		if daily, err := goalManager.GetDailyGoalProgress(); err == nil {
+			fmt.Printf("\n🎯 Daily Goal: %d/%d (%.1f%%)", 
+				daily.Current, daily.Target, daily.Percentage)
+			if daily.IsComplete {
+				if daily.IsOverAchieved {
+					fmt.Print(" 🌟")
+				} else {
+					fmt.Print(" ✅")
+				}
+			}
+			fmt.Println()
+
+			if streak, err := goalManager.GetStreak(); err == nil && streak.Current > 0 {
+				fmt.Printf("🔥 Streak: %d days", streak.Current)
+				if streak.IsActive {
+					fmt.Print(" (active)")
+				}
+				fmt.Println()
+			}
+		}
+	}
+	
 	// Add a pause to let user read the status
 	time.Sleep(1 * time.Second)
+}
+
+// checkGoalAchievements checks for and displays goal achievements
+func checkGoalAchievements() {
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		// Silently skip achievement checking if config fails
+		return
+	}
+
+	// Initialize database
+	database, err := db.NewDB()
+	if err != nil {
+		// Silently skip achievement checking if database fails
+		return
+	}
+	defer func() {
+		if err := database.Close(); err != nil {
+			// Log error but don't override the main error
+		}
+	}()
+
+	// Create goal manager
+	goalManager := goals.NewGoalManager(database, cfg)
+
+	// Check daily goal achievement
+	daily, err := goalManager.GetDailyGoalProgress()
+	if err != nil {
+		return // Silently skip on error
+	}
+
+	// Show celebration if daily goal is newly completed
+	if daily.IsComplete && daily.Current == daily.Target {
+		goals.DisplayGoalCelebration(goals.AchievementDailyGoal, map[string]interface{}{
+			"target": daily.Target,
+			"current": daily.Current,
+		})
+	} else if daily.IsOverAchieved && daily.Current > daily.Target {
+		// Check if this is a new personal best (simplified check)
+		if daily.Current >= 15 { // Arbitrary threshold
+			goals.DisplayGoalCelebration(goals.AchievementPersonalBest, map[string]interface{}{
+				"count": daily.Current,
+			})
+		} else {
+			// Show overachiever celebration
+			goals.DisplayGoalCelebration(goals.AchievementOverachiever, map[string]interface{}{
+				"extra": daily.Current - daily.Target,
+			})
+		}
+	}
+
+	// Check weekly goal achievement
+	weekly, err := goalManager.GetWeeklyGoalProgress()
+	if err != nil {
+		return // Silently skip on error
+	}
+
+	// Show weekly celebration if just completed
+	if weekly.IsComplete && weekly.Current == weekly.Target {
+		goals.DisplayGoalCelebration(goals.AchievementWeeklyGoal, map[string]interface{}{
+			"target": weekly.Target,
+			"current": weekly.Current,
+		})
+	}
+
+	// Check streak milestones
+	streak, err := goalManager.GetStreak()
+	if err != nil {
+		return // Silently skip on error
+	}
+
+	// Celebrate streak milestones
+	if streak.Current > 0 && shouldCelebrateStreak(streak.Current) {
+		goals.DisplayGoalCelebration(goals.AchievementStreakMilestone, map[string]interface{}{
+			"streak": streak.Current,
+		})
+	}
+}
+
+// shouldCelebrateStreak determines if a streak milestone should be celebrated
+func shouldCelebrateStreak(streak int) bool {
+	milestones := []int{3, 7, 14, 21, 30, 60, 90, 180, 365}
+	for _, milestone := range milestones {
+		if streak == milestone {
+			return true
+		}
+	}
+	return false
 }
