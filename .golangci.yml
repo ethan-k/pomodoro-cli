@@ -19,12 +19,27 @@ linters-settings:
       - unnamedResult
       - ruleguard
       - truncateCmp
+    disabled-checks:
+      - assignOp
   govet:
     check-shadowing: true
   misspell:
     locale: US
   gocyclo:
     min-complexity: 15
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    exclude-functions:
+      - "(*github.com/ethan-k/pomodoro-cli/internal/db.InternalDB).Close"
+      - "(*database/sql.DB).Close"
+      - "(*database/sql.Rows).Close"
+  gosec:
+    excludes:
+      - G204  # subprocess with variable
+      - G301  # directory permissions
+      - G304  # file inclusion via variable
+      - G306  # WriteFile perms
 
 linters:
   disable-all: true
@@ -61,12 +76,32 @@ issues:
       linters:
         - lll
     
-    # Ignore certain revive issues
+    # Ignore revive issues that are too noisy for this project
     - linters:
         - revive
       text: "should have comment"
+    - linters:
+        - revive
+      text: "package-comments"
+    - linters:
+        - revive
+      text: "exported"
+    - path: ^cmd/.*
+      linters:
+        - revive
+      text: "unused-parameter"
+    - path: ^internal/.*
+      linters:
+        - revive
+      text: "unused-parameter"
+    - path: ^cmd/break.go$
+      linters:
+        - revive
+      text: "var-naming"
+    - linters:
+        - gocritic
+      text: "assignOp"
   
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
-

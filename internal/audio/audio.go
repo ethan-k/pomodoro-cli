@@ -40,7 +40,7 @@ func DefaultConfig() *Config {
 
 	return &Config{
 		Enabled: true,
-		Volume:  0.5,  // Reduced default volume
+		Volume:  0.5, // Reduced default volume
 		Sounds: map[string]string{
 			string(PomodoroComplete): "pomodoro_complete.wav",
 			string(BreakComplete):    "break_complete.wav",
