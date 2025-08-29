@@ -10,12 +10,14 @@ import (
 )
 
 // NotifyComplete sends a notification when a Pomodoro or break is complete
+//
 //nolint:revive // keeping existing API naming convention
 func NotifyComplete(title, message string) error {
 	return beeep.Notify(title, message, "")
 }
 
 // NotifyWithAudio sends both visual and audio notifications
+//
 //nolint:revive // keeping existing API naming convention
 func NotifyWithAudio(title, message string, soundType audio.SoundType, silentMode bool) error {
 	// Send visual notification
@@ -38,6 +40,7 @@ func NotifyWithAudio(title, message string, soundType audio.SoundType, silentMod
 }
 
 // NotifyPomodoroComplete sends a notification when a Pomodoro is complete
+//
 //nolint:revive // keeping existing API naming convention
 func NotifyPomodoroComplete(description string) error {
 	title := "Pomodoro Complete"
@@ -46,6 +49,7 @@ func NotifyPomodoroComplete(description string) error {
 }
 
 // NotifyPomodoroCompleteWithOptions sends a notification with audio options
+//
 //nolint:revive // keeping existing API naming convention
 func NotifyPomodoroCompleteWithOptions(description string, silentMode bool) error {
 	title := "Pomodoro Complete"
@@ -54,6 +58,7 @@ func NotifyPomodoroCompleteWithOptions(description string, silentMode bool) erro
 }
 
 // NotifyBreakComplete sends a notification when a break is complete
+//
 //nolint:revive // keeping existing API naming convention
 func NotifyBreakComplete() error {
 	title := "Break Complete"
@@ -62,6 +67,7 @@ func NotifyBreakComplete() error {
 }
 
 // NotifyBreakCompleteWithOptions sends a notification with audio options
+//
 //nolint:revive // keeping existing API naming convention
 func NotifyBreakCompleteWithOptions(silentMode bool) error {
 	title := "Break Complete"

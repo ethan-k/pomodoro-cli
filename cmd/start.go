@@ -157,7 +157,7 @@ func handleContinuousMode() {
 		case "1", "b", "break":
 			fmt.Println("Starting break...")
 			runBreakSession(5*time.Minute, true) // Always wait for breaks in continuous mode
-			continue // Continue the loop after break
+			continue                             // Continue the loop after break
 		case "2", "p", "pomodoro":
 			fmt.Println("Starting another pomodoro...")
 			runPomodoroSession()
@@ -300,7 +300,7 @@ func showQuickStatus() {
 	fmt.Printf("🍅 Pomodoros: %d\n", pomodoroCount)
 	fmt.Printf("☕ Breaks: %d\n", breakCount)
 	fmt.Printf("📈 Total sessions: %d\n", len(sessions))
-	
+
 	// Add a pause to let user read the status
 	time.Sleep(1 * time.Second)
 }
