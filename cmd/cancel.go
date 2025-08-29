@@ -57,7 +57,7 @@ Example:
 		actualDuration := now.Sub(session.StartTime).Round(time.Second)
 
 		if jsonOutput {
-			fmt.Printf(`{"id":%d,"description":"%s","status":"cancelled","actual_duration":"%s"}`+"\n",
+			fmt.Printf(`{"id":%d,"description":"%s","status":"canceled","actual_duration":"%s"}`+"\n",
 				session.ID, session.Description, actualDuration)
 			return
 		}
