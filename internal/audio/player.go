@@ -116,7 +116,7 @@ func (p *SystemPlayer) tryMacOSPlayer(path string) error {
 	if runtime.GOOS != "darwin" {
 		return fmt.Errorf("not on macOS")
 	}
-	
+
 	cmd := exec.Command("afplay", path)
 	return cmd.Run()
 }
@@ -126,22 +126,22 @@ func (p *SystemPlayer) tryLinuxPlayer(path string) error {
 	if runtime.GOOS != "linux" {
 		return fmt.Errorf("not on Linux")
 	}
-	
+
 	// Try different Linux audio players in order of preference
 	players := []string{"paplay", "aplay", "play"}
-	
+
 	for _, player := range players {
 		// Check if player exists
 		if _, err := exec.LookPath(player); err != nil {
 			continue
 		}
-		
+
 		cmd := exec.Command(player, path) // #nosec G204 - player is validated with exec.LookPath, path is embedded resource
 		if err := cmd.Run(); err == nil {
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("no suitable audio player found")
 }
 

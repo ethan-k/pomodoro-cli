@@ -14,9 +14,9 @@ const (
 	// PomodoroComplete represents the sound played when a Pomodoro session completes
 	PomodoroComplete SoundType = "pomodoro_complete"
 	// BreakComplete represents the sound played when a break session completes
-	BreakComplete    SoundType = "break_complete"
+	BreakComplete SoundType = "break_complete"
 	// SessionStart represents the sound played when starting a session
-	SessionStart     SoundType = "session_start"
+	SessionStart SoundType = "session_start"
 )
 
 // Player interface for audio playback
@@ -44,7 +44,7 @@ func DefaultConfig() *Config {
 
 	return &Config{
 		Enabled: true,
-		Volume:  0.5,  // Reduced default volume
+		Volume:  0.5, // Reduced default volume
 		Sounds: map[string]string{
 			string(PomodoroComplete): "pomodoro_complete.wav",
 			string(BreakComplete):    "break_complete.wav",
@@ -92,7 +92,7 @@ type NoOpPlayer struct{}
 // Play does nothing and returns no error for the no-op player
 func (p *NoOpPlayer) Play(_ SoundType) error { return nil }
 
-// SetVolume does nothing and returns no error for the no-op player  
+// SetVolume does nothing and returns no error for the no-op player
 func (p *NoOpPlayer) SetVolume(_ float64) error { return nil }
 
 // IsEnabled always returns false for the no-op player
